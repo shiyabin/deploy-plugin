@@ -15,7 +15,8 @@
     "build": "npm run clean && npm run build.compile && npm run build.types",
     "build.compile": "cross-env NODE_ENV=production babel src -d dist --verbose --extensions .ts --ignore */**/*.d.ts,**/**/*.test.ts ",
     "build.types": "cross-env NODE_ENV=production tsc --project tsconfig.types.json",
-    "dev:vite": "vite build"
+    "dev:vite": "vite build",
+    "publish": "npm run build && npm version patch && npm publish"
   },
   "author": "shiyabin",
   "license": "ISC",
