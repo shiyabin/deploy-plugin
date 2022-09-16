@@ -66,12 +66,20 @@ function uploadFile(server: serverConfig, tempZipName: string) {
 // 远端文件更新
 const remoteFileUpdate = async (server: serverConfig, tempZipName: string) => {
   const serverName = `${server.host}:${server.port} ${server.dirPath}`
-  await ssh.execCommand(`rm -rf ${server.fileName}`, { cwd: server.dirPath }).catch(() => {})
-  const cmd = `unzip -o ${tempZipName}.zip && mv ${config.zipName} ${server.fileName} && rm -rf ${tempZipName}.zip`
-  return ssh
-    .execCommand(cmd, {
-      cwd: server.dirPath,
+  await execCommand(`rm -rf ${server.fileName}`, server).catch(() => {
+    console.log(`${serverName} remove old file fail`)
+  })
+  await execCommand(`unzip ${tempZipName}.zip`, server).catch(() => {
+    console.log(`${serverName} unzip fail`)
+    process.exit(0)
+  })
+  if (server.fileName != config.zipName) {
+    await execCommand(`mv ${config.zipName} ${server.fileName}`, server).catch(() => {
+      console.log(`${serverName} mv fail`)
+      process.exit(0)
     })
+  }
+  await execCommand(`rm -rf ${tempZipName}.zip`, server)
     .then((result: any) => {
       if (!result.stderr) {
         console.log(`${serverName} Gratefule! update success!`)
@@ -80,8 +88,16 @@ const remoteFileUpdate = async (server: serverConfig, tempZipName: string) => {
         return Promise.reject()
       }
     })
+    .catch(() => {
+      console.log(`${serverName} rm fail`)
+    })
 }
 
+const execCommand = async (command: string, server: serverConfig) => {
+  return ssh.execCommand(command, {
+    cwd: server.dirPath,
+  })
+}
 // 本地文件压缩
 const zipDirector = () => {
   return new Promise<void>((resolve, reject) => {
