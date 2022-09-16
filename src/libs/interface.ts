@@ -4,6 +4,29 @@ export interface DeployConfig {
    * @default dist
    */
   distPath?: string
+
+  /**
+   * 本地压缩文件夹存储目录
+   * @default archive
+   */
+  localZipDir?: string
+  /**
+   * 本地压缩文件名
+   * @default timestamp
+   */
+  zipName?: string
+  /**
+   * 是否上传
+   * @default true
+   */
+  isUpload?: boolean
+  /**
+   * 远程服务器配置
+   */
+  server?: serverConfig | serverConfig[]
+}
+
+export interface serverConfig {
   /**
    * 远程服务器地址
    */
@@ -32,14 +55,4 @@ export interface DeployConfig {
    * @default frontend
    */
   fileName?: string
-  /**
-   * 本地压缩文件夹存储目录
-   * @default archive
-   */
-  localZipDir?: string
-  /**
-   * 是否上传
-   * @default true
-   */
-  isUpload?: boolean
 }

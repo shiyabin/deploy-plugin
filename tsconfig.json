@@ -10,8 +10,9 @@
     "resolveJsonModule": true,
     "skipDefaultLibCheck": true,
     "sourceMap": false,
-    "allowSyntheticDefaultImports": true
+    "allowSyntheticDefaultImports": true,
+    "typeRoots": ["./node_modules/@types/", "types"]
   },
-  "include": ["src", "typings", "test"],
-  "exclude": ["node_modules", "dist"]
+  "include": ["src", "types", "test"],
+  "exclude": ["node_modules", "dist", "tests", "vite"]
 }
