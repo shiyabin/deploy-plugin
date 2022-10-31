@@ -1,3 +1,4 @@
+import { Config } from "node-ssh"
 export interface DeployConfig {
   /**
    * 本地打包后文件所在目录
@@ -26,25 +27,7 @@ export interface DeployConfig {
   server?: serverConfig | serverConfig[]
 }
 
-export interface serverConfig {
-  /**
-   * 远程服务器地址
-   */
-  host?: string
-  /**
-   * 远程服务器端口
-   * @default 22
-   */
-  port?: number
-  /**
-   * 远程服务器用户名
-   * @default root
-   */
-  username: string
-  /**
-   * 远程服务器密码
-   */
-  password?: string
+export type serverConfig = Config &{
   /**
    * 远程服务器文件上传目录
    * @default /data
@@ -55,4 +38,5 @@ export interface serverConfig {
    * @default frontend
    */
   fileName?: string
+  
 }

@@ -23,25 +23,19 @@ const defaultServerConfig: serverConfig = {
   fileName: 'frontend',
 }
 const curPath = process.cwd()
-// 当前时间格式化
-const ssh = new NodeSSH()
 
 async function deployServer(server: serverConfig) {
+  const ssh = new NodeSSH()
   const tempZipName = server.fileName! + Date.now()
-  await uploadFile(server, tempZipName)
-  await remoteFileUpdate(server, tempZipName)
+  await uploadFile(server, tempZipName,ssh)
+  await remoteFileUpdate(server, tempZipName,ssh)
 }
 // 本地文件上传至远程服务器
-function uploadFile(server: serverConfig, tempZipName: string) {
+function uploadFile(server: serverConfig, tempZipName: string,ssh:NodeSSH) {
   const serverName = `${server.host}:${server.port} ${server.dirPath}`
   return new Promise<void>((resolve, reject) => {
     ssh
-      .connect({
-        host: server.host,
-        username: server.username,
-        password: server.password,
-        port: 22,
-      })
+      .connect(server)
       .then(() => {
         let localPath = curPath + '/' + config.localZipDir + `/${config.zipName}.zip`
         ssh
@@ -64,22 +58,22 @@ function uploadFile(server: serverConfig, tempZipName: string) {
 }
 
 // 远端文件更新
-const remoteFileUpdate = async (server: serverConfig, tempZipName: string) => {
+const remoteFileUpdate = async (server: serverConfig, tempZipName: string,ssh:NodeSSH) => {
   const serverName = `${server.host}:${server.port} ${server.dirPath}`
-  await execCommand(`rm -rf ${server.fileName}`, server).catch(() => {
+  await execCommand(`rm -rf ${server.fileName}`, server,ssh).catch(() => {
     console.log(`${serverName} remove old file fail`)
   })
-  await execCommand(`unzip ${tempZipName}.zip`, server).catch(() => {
+  await execCommand(`unzip ${tempZipName}.zip`, server,ssh).catch(() => {
     console.log(`${serverName} unzip fail`)
     process.exit(0)
   })
   if (server.fileName != config.zipName) {
-    await execCommand(`mv ${config.zipName} ${server.fileName}`, server).catch(() => {
+    await execCommand(`mv ${config.zipName} ${server.fileName}`, server,ssh).catch(() => {
       console.log(`${serverName} mv fail`)
       process.exit(0)
     })
   }
-  await execCommand(`rm -rf ${tempZipName}.zip`, server)
+  await execCommand(`rm -rf ${tempZipName}.zip`, server,ssh)
     .then((result: any) => {
       if (!result.stderr) {
         console.log(`${serverName} Gratefule! update success!`)
@@ -93,7 +87,7 @@ const remoteFileUpdate = async (server: serverConfig, tempZipName: string) => {
     })
 }
 
-const execCommand = async (command: string, server: serverConfig) => {
+const execCommand = async (command: string, server: serverConfig,ssh:NodeSSH) => {
   return ssh.execCommand(command, {
     cwd: server.dirPath,
   })
