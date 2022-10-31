@@ -52,7 +52,6 @@ function uploadFile(server: serverConfig, tempZipName: string,ssh:NodeSSH) {
       .catch((err: any) => {
         console.log(`${serverName} SSH conneting fail:`, err)
         reject(err)
-        process.exit(0)
       })
   })
 }
