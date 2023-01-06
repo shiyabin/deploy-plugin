@@ -27,11 +27,11 @@ const curPath = process.cwd()
 async function deployServer(server: serverConfig) {
   const ssh = new NodeSSH()
   const tempZipName = server.fileName! + Date.now()
-  await uploadFile(server, tempZipName,ssh)
-  await remoteFileUpdate(server, tempZipName,ssh)
+  await uploadFile(server, tempZipName, ssh)
+  await remoteFileUpdate(server, tempZipName, ssh)
 }
 // 本地文件上传至远程服务器
-function uploadFile(server: serverConfig, tempZipName: string,ssh:NodeSSH) {
+function uploadFile(server: serverConfig, tempZipName: string, ssh: NodeSSH) {
   const serverName = `${server.host}:${server.port} ${server.dirPath}`
   return new Promise<void>((resolve, reject) => {
     ssh
@@ -57,22 +57,22 @@ function uploadFile(server: serverConfig, tempZipName: string,ssh:NodeSSH) {
 }
 
 // 远端文件更新
-const remoteFileUpdate = async (server: serverConfig, tempZipName: string,ssh:NodeSSH) => {
+const remoteFileUpdate = async (server: serverConfig, tempZipName: string, ssh: NodeSSH) => {
   const serverName = `${server.host}:${server.port} ${server.dirPath}`
-  await execCommand(`rm -rf ${server.fileName}`, server,ssh).catch(() => {
+  await execCommand(`sudo rm -rf ${server.fileName}`, server, ssh).catch(() => {
     console.log(`${serverName} remove old file fail`)
   })
-  await execCommand(`unzip ${tempZipName}.zip`, server,ssh).catch(() => {
+  await execCommand(`sudo unzip ${tempZipName}.zip`, server, ssh).catch(() => {
     console.log(`${serverName} unzip fail`)
     process.exit(0)
   })
   if (server.fileName != config.zipName) {
-    await execCommand(`mv ${config.zipName} ${server.fileName}`, server,ssh).catch(() => {
+    await execCommand(`sudo mv ${config.zipName} ${server.fileName}`, server, ssh).catch(() => {
       console.log(`${serverName} mv fail`)
       process.exit(0)
     })
   }
-  await execCommand(`rm -rf ${tempZipName}.zip`, server,ssh)
+  await execCommand(`sudo rm -rf ${tempZipName}.zip`, server, ssh)
     .then((result: any) => {
       if (!result.stderr) {
         console.log(`${serverName} Gratefule! update success!`)
@@ -84,9 +84,22 @@ const remoteFileUpdate = async (server: serverConfig, tempZipName: string,ssh:No
     .catch(() => {
       console.log(`${serverName} rm fail`)
     })
+  const commands = server.commands || []
+  if (commands && commands.length) {
+    for (let i = 0; i < commands.length; i++) {
+      await execCommand(commands[i], server, ssh)
+        .then((res) => {
+          console.log(`${serverName} ${commands[i]} success!`)
+        })
+        .catch((err) => {
+          console.log(`${serverName} ${commands[i]} fail!`, err)
+          return Promise.reject()
+        })
+    }
+  }
 }
 
-const execCommand = async (command: string, server: serverConfig,ssh:NodeSSH) => {
+const execCommand = async (command: string, server: serverConfig, ssh: NodeSSH) => {
   return ssh.execCommand(command, {
     cwd: server.dirPath,
   })
