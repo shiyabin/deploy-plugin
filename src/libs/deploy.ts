@@ -86,7 +86,7 @@ const remoteFileUpdate = async (server: serverConfig, tempZipName: string, ssh: 
       })
     })
   // 解压文件
-  const unzipCommand = config.compressedType === 'zip' ? 'unzip -of' : 'tar -zxvf'
+  const unzipCommand = config.compressedType === 'zip' ? 'unzip -o' : 'tar -zxvf'
 
   await execCommand(`sudo ${unzipCommand} ${tempZipName}.${config.compressedType}`, server, ssh)
     .then((res) => {
