@@ -10,12 +10,18 @@ export interface DeployConfig {
    * 本地压缩文件夹存储目录
    * @default archive
    */
-  localZipDir?: string
+  localCompressedFloder?: string
   /**
    * 本地压缩文件名
    * @default timestamp
    */
-  zipName?: string
+  compressedFileName?: string
+
+  /**
+   * 压缩文件类型
+   * @default tar
+   */
+  compressedType?: 'tar' | 'zip'
   /**
    * 是否上传
    * @default true

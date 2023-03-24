@@ -9,8 +9,9 @@ const sizeUnit = ['B', 'KB', 'MB', 'GB']
 //默认配置
 let config: DeployConfig = {
   distPath: 'dist',
-  localZipDir: 'archive',
-  zipName: Date.now().toString(),
+  compressedType: 'zip',
+  localCompressedFloder: 'archive',
+  compressedFileName: Date.now().toString(),
   isUpload: true,
 }
 //默认server配置
@@ -23,6 +24,18 @@ const defaultServerConfig: serverConfig = {
   fileName: 'frontend',
 }
 const curPath = process.cwd()
+let compressFileName = ''
+const archiverOption = {
+  zip: {
+    zlib: { level: 9 }, // Sets the compression level.
+  },
+  tar: {
+    gzip: true,
+    gzipOptions: {
+      level: 1,
+    },
+  },
+}
 
 async function deployServer(server: serverConfig) {
   const ssh = new NodeSSH()
@@ -37,9 +50,9 @@ function uploadFile(server: serverConfig, tempZipName: string, ssh: NodeSSH) {
     ssh
       .connect(server)
       .then(() => {
-        let localPath = curPath + '/' + config.localZipDir + `/${config.zipName}.zip`
+        let localPath = curPath + '/' + config.localCompressedFloder + `/${compressFileName}`
         ssh
-          .putFile(localPath, `${server.dirPath}/${tempZipName}.zip`)
+          .putFile(localPath, `${server.dirPath}/${tempZipName}.${config.compressedType}`)
           .then(() => {
             resolve()
           })
@@ -59,20 +72,42 @@ function uploadFile(server: serverConfig, tempZipName: string, ssh: NodeSSH) {
 // 远端文件更新
 const remoteFileUpdate = async (server: serverConfig, tempZipName: string, ssh: NodeSSH) => {
   const serverName = `${server.host}:${server.port} ${server.dirPath}`
-  await execCommand(`sudo rm -rf ${server.fileName}`, server, ssh).catch(() => {
-    console.log(`${serverName} remove old file fail`)
-  })
-  await execCommand(`sudo unzip ${tempZipName}.zip`, server, ssh).catch(() => {
-    console.log(`${serverName} unzip fail`)
-    process.exit(0)
-  })
-  if (server.fileName != config.zipName) {
-    await execCommand(`sudo mv ${config.zipName} ${server.fileName}`, server, ssh).catch(() => {
+  // 查看远程服务器是否存在该文件夹
+  await execCommand(`sudo ls ${server.fileName}`, server, ssh)
+    .then(() => {
+      return execCommand(`sudo rm -rf ${server.fileName}/*`, server, ssh).catch(() => {
+        console.log(`${serverName} remove old file fail`)
+      })
+    })
+    .catch(() => {
+      return execCommand(`sudo mkdir ${server.fileName}`, server, ssh).catch(() => {
+        console.log(`${serverName} mkdir fail`)
+        process.exit(0)
+      })
+    })
+  // 解压文件
+  const unzipCommand = config.compressedType === 'zip' ? 'unzip -of' : 'tar -zxvf'
+
+  await execCommand(`sudo ${unzipCommand} ${tempZipName}.${config.compressedType}`, server, ssh)
+    .then((res) => {
+      console.log(unzipCommand, res)
+    })
+    .catch(() => {
+      console.log(`${serverName} ${unzipCommand} fail`)
+      process.exit(0)
+    })
+  if (server.fileName != config.compressedFileName) {
+    await execCommand(
+      `sudo cp -r ${config.compressedFileName}/* ${server.fileName}/`,
+      server,
+      ssh
+    ).catch(() => {
       console.log(`${serverName} mv fail`)
       process.exit(0)
     })
   }
-  await execCommand(`sudo rm -rf ${tempZipName}.zip`, server, ssh)
+  // 删除压缩文件
+  await execCommand(`sudo rm -rf ${tempZipName}.${config.compressedType}`, server, ssh)
     .then((result: any) => {
       if (!result.stderr) {
         console.log(`${serverName} Gratefule! update success!`)
@@ -107,9 +142,9 @@ const execCommand = async (command: string, server: serverConfig, ssh: NodeSSH) 
 // 本地文件压缩
 const zipDirector = () => {
   return new Promise<void>((resolve, reject) => {
-    if (!config.localZipDir) {
-      console.error('localZipDir is required')
-      reject(new Error('localZipDir is required'))
+    if (!config.localCompressedFloder) {
+      console.error('localCompressedFloder is required')
+      reject(new Error('localCompressedFloder is required'))
       process.exit(0)
     }
     if (!config.distPath) {
@@ -117,16 +152,20 @@ const zipDirector = () => {
       reject(new Error('distPath is required'))
       process.exit(0)
     }
-    if (!fs.existsSync(config.localZipDir)) {
-      fs.mkdirSync(config.localZipDir)
+    if (!fs.existsSync(config.localCompressedFloder)) {
+      fs.mkdirSync(config.localCompressedFloder)
     }
-    const output = fs.createWriteStream(`${curPath}/${config.localZipDir}/${config.zipName}.zip`)
-    const archive = archiver('zip', {
-      zlib: { level: 9 },
-    }).on('error', (err: any) => {
-      console.log(err)
-      reject(err)
-    })
+    compressFileName = config.compressedFileName + '.' + config.compressedType
+    const output = fs.createWriteStream(
+      `${curPath}/${config.localCompressedFloder}/${compressFileName}`
+    )
+    const archive = archiver(config.compressedType!, archiverOption[config.compressedType!]).on(
+      'error',
+      (err: any) => {
+        console.log(err)
+        reject(err)
+      }
+    )
     output.on('close', (err: any) => {
       if (err) {
         console.log('something error width the zip process:', err)
@@ -140,7 +179,7 @@ const zipDirector = () => {
     })
     let dirPath = path.resolve(curPath, './', config.distPath)
     archive.pipe(output)
-    archive.directory(dirPath, config.zipName!)
+    archive.directory(dirPath, config.compressedFileName!)
     archive.finalize()
   })
 }
