@@ -108,16 +108,11 @@ const remoteFileUpdate = async (server: serverConfig, tempZipName: string, ssh: 
   }
   // 删除压缩文件
   await execCommand(`sudo rm -rf ${tempZipName}.${config.compressedType}`, server, ssh)
-    .then((result: any) => {
-      if (!result.stderr) {
-        console.log(`${serverName} Gratefule! update success!`)
-      } else {
-        console.log(`${serverName} Something wrong:`, result)
-        return Promise.reject()
-      }
+    .then(() => {
+      console.log(`${serverName} Gratefule! update success!`)
     })
-    .catch(() => {
-      console.log(`${serverName} rm fail`)
+    .catch((err) => {
+      console.log(`${serverName} Something wrong:`, err)
     })
   const commands = server.commands || []
   if (commands && commands.length) {
@@ -135,9 +130,16 @@ const remoteFileUpdate = async (server: serverConfig, tempZipName: string, ssh: 
 }
 
 const execCommand = async (command: string, server: serverConfig, ssh: NodeSSH) => {
-  return ssh.execCommand(command, {
-    cwd: server.dirPath,
-  })
+  return ssh
+    .execCommand(command, {
+      cwd: server.dirPath,
+    })
+    .then((result) => {
+      if (result.stderr) {
+        return Promise.reject(result.stderr)
+      }
+      return Promise.resolve(result)
+    })
 }
 // 本地文件压缩
 const zipDirector = () => {
