@@ -1,6 +1,6 @@
 {
   "name": "@yabinshi/deploy-plugin",
-  "version": "0.0.9",
+  "version": "0.0.10",
   "description": "YaBin's deploy plugin",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
