@@ -1,5 +1,5 @@
 import { Compiler } from 'webpack'
-import { DeployConfig } from './interface'
+import { DeployConfig } from './type'
 import deploy from './deploy'
 export default class TaosDataUploadFileWebpack {
   config: DeployConfig
@@ -9,7 +9,7 @@ export default class TaosDataUploadFileWebpack {
   apply(complier: Compiler) {
     complier.hooks.done.tap(
       'TaosDataUploadFileWebpack',
-      (stats /* 在 hook 被触及时，会将 stats 作为参数传入。 */) => {
+      (/* 在 hook 被触及时，会将 stats 作为参数传入。 */) => {
         deploy(this.config)
       }
     )

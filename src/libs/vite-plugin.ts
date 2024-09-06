@@ -1,4 +1,4 @@
-import { DeployConfig } from './interface'
+import { DeployConfig } from './type'
 import Deploy from './deploy'
 import { Plugin } from 'vite'
 export default function (config: DeployConfig): Plugin {
@@ -6,8 +6,12 @@ export default function (config: DeployConfig): Plugin {
     name: 'vite-plugin-deploy',
     apply: 'build',
     enforce: 'post',
-    closeBundle() {
-      Deploy(config)
+    closeBundle: {
+      order: 'post',
+      sequential: true,
+      async handler() {
+        await Deploy(config)
+      },
     },
   }
 }

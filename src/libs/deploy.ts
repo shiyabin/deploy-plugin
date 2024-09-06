@@ -1,4 +1,4 @@
-import { DeployConfig, serverConfig } from './interface'
+import { DeployConfig, serverConfig } from './type'
 import fs from 'fs'
 import { NodeSSH } from 'node-ssh'
 import archiver from 'archiver'
@@ -36,95 +36,85 @@ const archiverOption = {
     },
   },
 }
-
 async function deployServer(server: serverConfig) {
   const ssh = new NodeSSH()
-  const tempZipName = server.fileName! + Date.now()
-  await uploadFile(server, tempZipName, ssh)
-  await remoteFileUpdate(server, tempZipName, ssh)
+  const tempZipName = `${server.fileName}${Date.now()}`
+  try {
+    await uploadFile(server, tempZipName, ssh)
+    await remoteFileUpdate(server, tempZipName, ssh)
+  } catch (err) {
+    console.error(err)
+    process.exit(0)
+  }
 }
-// 本地文件上传至远程服务器
-function uploadFile(server: serverConfig, tempZipName: string, ssh: NodeSSH) {
+
+async function uploadFile(server: serverConfig, tempZipName: string, ssh: NodeSSH) {
   const serverName = `${server.host}:${server.port} ${server.dirPath}`
-  return new Promise<void>((resolve, reject) => {
-    ssh
-      .connect(server)
-      .then(() => {
-        let localPath = curPath + '/' + config.localCompressedFloder + `/${compressFileName}`
-        ssh
-          .putFile(localPath, `${server.dirPath}/${tempZipName}.${config.compressedType}`)
-          .then(() => {
-            resolve()
-          })
-          .catch((err: any) => {
-            console.log(`${serverName} the file upload fail:`, err)
-            reject(err)
-            process.exit(0)
-          })
-      })
-      .catch((err: any) => {
-        console.log(`${serverName} SSH conneting fail:`, err)
-        reject(err)
-      })
-  })
+  try {
+    await ssh.connect(server)
+    const localPath = `${curPath}/${config.localCompressedFloder}/${compressFileName}`
+    await ssh.putFile(localPath, `${server.dirPath}/${tempZipName}.${config.compressedType}`)
+  } catch (err) {
+    console.log(`${serverName} SSH connecting or file upload failed:`, err)
+    throw err
+  }
 }
 
 // 远端文件更新
 const remoteFileUpdate = async (server: serverConfig, tempZipName: string, ssh: NodeSSH) => {
   const serverName = `${server.host}:${server.port} ${server.dirPath}`
-  // 查看远程服务器是否存在该文件夹
-  await execCommand(`sudo ls ${server.fileName}`, server, ssh)
-    .then(() => {
-      return execCommand(`sudo rm -rf ${server.fileName}/*`, server, ssh).catch(() => {
-        console.log(`${serverName} remove old file fail`)
-      })
-    })
-    .catch(() => {
-      return execCommand(`sudo mkdir ${server.fileName}`, server, ssh).catch(() => {
-        console.log(`${serverName} mkdir fail`)
-        process.exit(0)
-      })
-    })
+  try {
+    // 查看远程服务器是否存在该文件夹
+    if (
+      await execCommand(`sudo ls ${server.fileName}`, server, ssh)
+        .then(() => true)
+        .catch(() => false)
+    ) {
+      await execCommand(`sudo rm -rf ${server.fileName}/*`, server, ssh)
+    } else {
+      await execCommand(`sudo mkdir ${server.fileName}`, server, ssh)
+    }
+  } catch (err) {
+    console.log(`${serverName} mkdir fail`)
+    process.exit(0)
+  }
   // 解压文件
   const unzipCommand = config.compressedType === 'zip' ? 'unzip -o' : 'tar -zxvf'
-
-  await execCommand(`sudo ${unzipCommand} ${tempZipName}.${config.compressedType}`, server, ssh)
-    .then((res) => {
-      console.log(unzipCommand, res)
-    })
-    .catch(() => {
-      console.log(`${serverName} ${unzipCommand} fail`)
-      process.exit(0)
-    })
+  try {
+    await execCommand(`sudo ${unzipCommand} ${tempZipName}.${config.compressedType}`, server, ssh)
+  } catch (err) {
+    console.log(`${serverName} ${unzipCommand} fail`)
+    process.exit(0)
+  }
   if (server.fileName != config.compressedFileName) {
-    await execCommand(
-      `sudo cp -r ${config.compressedFileName}/* ${server.fileName}/`,
-      server,
-      ssh
-    ).catch(() => {
+    try {
+      await execCommand(
+        `sudo cp -r ${config.compressedFileName}/* ${server.fileName}/`,
+        server,
+        ssh
+      )
+    } catch (err) {
       console.log(`${serverName} mv fail`)
       process.exit(0)
-    })
+    }
   }
   // 删除压缩文件
-  await execCommand(`sudo rm -rf ${tempZipName}.${config.compressedType}`, server, ssh)
-    .then(() => {
-      console.log(`${serverName} Gratefule! update success!`)
-    })
-    .catch((err) => {
-      console.log(`${serverName} Something wrong:`, err)
-    })
+  try {
+    await execCommand(`sudo rm -rf ${tempZipName}.${config.compressedType}`, server, ssh)
+    console.log(`${serverName} Gratefule! update success!`)
+  } catch (err) {
+    console.log(`${serverName} Something wrong:`, err)
+  }
   const commands = server.commands || []
   if (commands && commands.length) {
     for (let i = 0; i < commands.length; i++) {
-      await execCommand(commands[i], server, ssh)
-        .then((res) => {
-          console.log(`${serverName} ${commands[i]} success!`)
-        })
-        .catch((err) => {
-          console.log(`${serverName} ${commands[i]} fail!`, err)
-          return Promise.reject()
-        })
+      try {
+        await execCommand(commands[i], server, ssh)
+        console.log(`${serverName} ${commands[i]} success!`)
+      } catch (err) {
+        console.log(`${serverName} ${commands[i]} fail!`, err)
+        return Promise.reject()
+      }
     }
   }
 }
