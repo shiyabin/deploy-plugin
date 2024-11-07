@@ -1,6 +1,6 @@
 {
   "name": "@yabinshi/deploy-plugin",
-  "version": "0.0.10",
+  "version": "0.0.11",
   "description": "YaBin's deploy plugin",
   "main": "./dist/index.js",
   "types": "./dist/index.d.ts",
@@ -16,7 +16,7 @@
     "test": "echo \"Error: no test specified\" && exit 1",
     "dev": "npm run clean && cross-env NODE_ENV=development babel -w src -d dist --verbose --extensions .ts --ignore */**/*.d.ts,**/**/*.test.ts --source-maps",
     "clean": "del-cli --dot=true \"./dist/**/*\"",
-    "build": "unbuild",
+    "build": "npm run clean && npm run build.compile && npm run build.types",
     "build.compile": "cross-env NODE_ENV=production babel src -d dist --verbose --extensions .ts --ignore */**/*.d.ts,**/**/*.test.ts ",
     "build.types": "cross-env NODE_ENV=production tsc --project tsconfig.types.json",
     "test:vite": "vite build --config ./tests/vite/vite.config.ts",
@@ -44,7 +44,6 @@
     "@types/ssh2-streams": "^0.1.9",
     "@typescript-eslint/eslint-plugin": "^8.4.0",
     "@typescript-eslint/parser": "^8.4.0",
-    "core-js": "^3.23.1",
     "cross-env": "^5.2.0",
     "del-cli": "^1.1.0",
     "eslint": "^8.5.0",
@@ -53,9 +52,7 @@
     "lint-staged": "^15.2.10",
     "prettier": "^2.5.1",
     "typescript": "^4.5.4",
-    "unbuild": "^0.6.7",
     "vite": "^3.0.4",
-    "vite-plugin-inspect": "^0.6.0",
     "webpack": "^5.31.2"
   },
   "link-staged": {

@@ -10,7 +10,9 @@ export default function (config: DeployConfig): Plugin {
       order: 'post',
       sequential: true,
       async handler() {
-        await Deploy(config)
+        process.on('beforeExit', async () => {
+          await Deploy(config)
+        })
       },
     },
   }
